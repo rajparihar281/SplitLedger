@@ -1,179 +1,624 @@
-# Step 2.3 — Non-Functional Requirements
+## 1. Overview
 
-## Security
+SplitLedger is a group expense-sharing application that allows users to create groups, record shared expenses, calculate balances, and settle debts.
+
+The system is designed around a clear separation of responsibilities:
+
+* **Flutter** handles the user interface, local state, offline data, and interaction with the backend.
+* **Node.js** provides the API, authorization, business logic, settlement engine, synchronization, and real-time events.
+* **PostgreSQL** is the authoritative source of truth for financial and relational data.
+* **Firebase Authentication** handles user authentication.
+* **Firebase Cloud Messaging (FCM)** handles push notifications.
+* **Android Java** is used only where native Android capabilities are required.
+
+The architecture is intentionally designed so that the client is never trusted with security-sensitive or authoritative financial decisions.
+
+---
+
+# 2. Actors
+
+## 2.1 User
+
+A normal SplitLedger user who can:
+
+* Register or sign in
+* View their profile
+* Sign out
+* Create groups
+* Join groups
+* View groups they belong to
+* Add members to groups
+* Leave groups
+* Add expenses
+* View expenses
+* View balances
+* Settle debts
+
+A user exists globally within the system.
+
+---
+
+## 2.2 Group Member
+
+A **Group Member** is a user who belongs to a particular group.
+
+This distinction is important:
+
+```text
+User
+  │
+  ├── exists globally
+  │
+  └── may belong to many groups
+              │
+              ├── Group A membership
+              ├── Group B membership
+              └── Group C membership
+```
+
+Membership is therefore a relationship between a user and a specific group.
+
+Authorization must be evaluated against this relationship.
+
+For example:
+
+> Being an authenticated SplitLedger user does not automatically grant access to every group.
+
+The backend must verify that the authenticated user has the required membership or role within the requested group.
+
+---
+
+# 3. Functional Requirements
+
+## 3.1 Authentication
+
+The system must allow a user to:
+
+* Register
+* Sign in
+* View their profile
+* Sign out
+
+Firebase Authentication is responsible for establishing the user's identity.
+
+Node.js is responsible for validating the authenticated identity before allowing protected operations.
+
+---
+
+## 3.2 Groups
+
+A user can:
+
+* Create a group
+* View groups they belong to
+* View group details
+* Add members
+* Leave a group
+
+Group membership is scoped to an individual group.
+
+---
+
+## 3.3 Expenses
+
+A group member can:
+
+* Create an expense
+* View expenses
+* View expense details
+* Edit their own expense
+* Delete their own expense
+
+An expense contains:
+
+* Description
+* Amount
+* Payer
+* Participants
+* Split method
+* Date
+
+The backend remains authoritative for determining whether an expense can be created, modified, or deleted.
+
+---
+
+# 4. Expense Split Methods
+
+Version 1 supports three split methods:
+
+1. Equal
+2. Unequal
+3. Percentage
+
+---
+
+## 4.1 Equal Split
+
+The expense amount is divided equally among the participants.
+
+Example:
+
+**Total:** ₹1,000
+
+```text
+A = ₹500
+B = ₹500
+```
+
+For `N` participants:
+
+```text
+participant_share = total_amount / N
+```
+
+The backend must handle monetary precision and rounding deterministically.
+
+---
+
+## 4.2 Percentage Split
+
+Each participant receives a percentage of the total expense.
+
+Example:
+
+**Total:** ₹1,000
+
+```text
+A = 60%
+B = 40%
+
+A = ₹600
+B = ₹400
+```
+
+The percentages must satisfy the system's validation rules.
+
+For version 1:
+
+```text
+sum(percentages) = 100%
+```
+
+The backend must validate this rather than trusting the client.
+
+---
+
+## 4.3 Unequal Split
+
+Each participant receives an explicitly specified share.
+
+Example:
+
+**Total:** ₹1,000
+
+```text
+A = ₹700
+B = ₹300
+```
+
+The backend must verify:
+
+```text
+sum(participant_shares) = total_amount
+```
+
+An invalid split must be rejected.
+
+---
+
+# 5. Balance Requirements
+
+The system must calculate:
+
+* How much each member owes
+* How much each member should receive
+
+Example:
+
+```text
+Raj     +₹500
+Amit    -₹300
+Rahul   -₹200
+```
+
+Meaning:
+
+```text
+Raj is owed ₹500.
+Amit owes ₹300.
+Rahul owes ₹200.
+```
+
+Balances must be derived from authoritative ledger data.
+
+The client must not be able to submit an arbitrary balance and have the backend accept it as authoritative.
+
+---
+
+# 6. Settlement Requirements
+
+A group member can settle a debt with another member.
+
+Example:
+
+```text
+Amit → Raj ₹300
+```
+
+Before settlement:
+
+```text
+Amit    -₹300
+Raj     +₹500
+```
+
+After successful settlement:
+
+```text
+Amit    ₹0
+Raj     +₹200
+```
+
+A settlement must be processed as an atomic database operation.
+
+The system must prevent invalid settlements such as:
+
+* Settling with a user outside the group
+* Settling more than the outstanding debt
+* Settling a negative amount
+* Settling against a nonexistent expense or balance
+* Creating duplicate settlements
+
+---
+
+# 7. Non-Functional Requirements
+
+## 7.1 Security
 
 The application must:
 
-* Authenticate users before allowing access to protected resources.
-* Authorize users before allowing group operations.
-* Never rely on authorization information sent by the client.
-* Keep API keys, credentials, and other secrets out of the client application.
-* Validate all API input on the server.
-* Enforce appropriate database-level access policies.
-* Prevent users from accessing or modifying data belonging to groups they are not members of.
+* Authenticate users
+* Authorize group operations
+* Never trust client-provided authorization information
+* Validate API input
+* Protect secrets
+* Prevent unauthorized group access
+* Enforce database-level access policies where applicable
+* Keep financial calculations on trusted backend infrastructure
+* Avoid exposing privileged credentials to Flutter
+
+The security model follows:
+
+```text
+Authentication
+      ↓
+Authorization
+      ↓
+Input Validation
+      ↓
+Business Logic
+      ↓
+Database Transaction
+```
+
+Authentication answers:
+
+> Who is the user?
+
+Authorization answers:
+
+> Is this user allowed to perform this operation?
+
+These are separate concerns.
 
 ---
 
-## Reliability
+## 7.2 Reliability
 
 The application should:
 
-* Handle API failures gracefully.
-* Prevent duplicate expense creation when the same request is retried.
-* Preserve locally created expenses when the device temporarily loses network connectivity.
-* Retry failed synchronization operations where appropriate.
-* Recover from synchronization failures without losing locally created data.
-* Keep the financial ledger consistent even when multiple operations occur at the same time.
+* Handle API failures gracefully
+* Avoid duplicate expense creation
+* Preserve locally created expenses during temporary network loss
+* Recover from synchronization failures
+* Use transactional writes for financial operations
+* Maintain consistency between related ledger records
+
+Offline functionality must never turn the local Flutter database into the authoritative financial ledger.
 
 ---
 
-## Performance
+## 7.3 Performance
 
-The initial version does not require aggressive optimization.
+The initial system does not require premature optimization.
 
-The following are the initial performance expectations:
+Initial targets:
 
-* Normal API operations should be responsive.
-* Network operations should not block the UI.
+* Normal API operations should feel responsive.
+* UI interactions should not block during network requests.
 * Database queries should use appropriate indexes.
-* Large lists should be loaded using pagination where necessary.
-* Expensive calculations should not unnecessarily run on the client.
+* Expensive calculations should not be unnecessarily repeated.
+* Real-time updates should be efficient enough for normal group sizes.
 
-Performance will be measured and optimized based on actual usage and profiling rather than assumptions.
+Performance should eventually be measured using real metrics rather than assumptions.
 
 ---
 
-## Maintainability
+## 7.4 Maintainability
 
-The system should follow:
+The system should provide:
 
 * Separation of concerns
 * Feature-based Flutter architecture
-* Layered backend architecture
-* Clear API boundaries
+* Layered Node.js architecture
 * Automated tests
 * Documentation
-* Consistent coding conventions
 * Meaningful Git history
-
-Business logic should not be duplicated between the Flutter application and the backend.
+* Clear API boundaries
+* Explicit domain rules
+* Consistent validation
+* Clear error handling
 
 ---
 
-# Step 2.4 — System Boundaries
+# 8. System Boundaries
 
-The system is divided into several major components. Each component has a clearly defined responsibility.
+The system is divided into several major responsibilities.
 
-## Flutter
+---
+
+## 8.1 Flutter
 
 Flutter is responsible for:
 
-* UI rendering
+* UI
 * User interaction
-* Local application state
-* Local and offline data
+* Local state
+* Local/offline data
 * Calling backend APIs
 * Displaying server results
-* Handling client-side validation for user experience
+* Handling client-side presentation logic
+* Managing temporary synchronization state
 
 Flutter is **not** responsible for:
 
 * Authoritative balance calculations
 * Authorization decisions
 * Settlement decisions
-* Maintaining the authoritative financial ledger
+* Authoritative ledger storage
+* Determining whether a user is allowed to access a group
 
-The client may calculate or display temporary values for a better user experience, but the server remains authoritative.
+The client can calculate values for presentation, but server results remain authoritative.
 
 ---
 
-## Node.js
+## 8.2 Node.js
 
 Node.js is responsible for:
 
-* REST API
-* Authentication verification
+* HTTP API
+* Authentication context handling
 * Authorization
-* Request validation
+* Input validation
 * Business logic
 * Expense processing
-* Balance calculations
-* Settlement processing
+* Split validation
+* Balance calculation
+* Settlement engine
 * Synchronization
 * WebSocket events
+* Notification events
+* Transaction orchestration
 
-The backend is the main enforcement point for application rules.
+Node.js acts as the trusted application/business-logic boundary between Flutter and PostgreSQL.
 
 ---
 
-## PostgreSQL / Supabase
+## 8.3 PostgreSQL
 
 PostgreSQL is responsible for:
 
 * Persistent ledger data
-* Users and group relationships
+* Users and application identities
+* Groups
+* Group memberships
 * Expenses
-* Expense splits
-* Balances and settlement records
-* Database relationships
+* Expense participants
+* Settlements
+* Relationships
 * Constraints
-* Transactions
-* Data consistency
+* Referential integrity
+* Transactional integrity
+* Authoritative financial state
 
-Supabase provides the managed PostgreSQL infrastructure and related database services.
-
-PostgreSQL is the authoritative source of truth for financial data.
-
----
-
-## Firebase
-
-Firebase is responsible for services that are better handled outside the core ledger:
-
-* Authentication
-* Push notifications through Firebase Cloud Messaging (FCM)
-
-Firebase is **not** the source of truth for expenses, balances, or settlements.
+PostgreSQL is the **source of truth for financial data**.
 
 ---
 
-## Android Java
+## 8.4 Supabase
 
-Android-specific Java/Kotlin code may be used where native Android integration is required.
+Supabase may provide the managed PostgreSQL infrastructure and related database capabilities.
 
-Examples include:
+Conceptually:
 
-* Platform-specific functionality
-* Native Android integrations
-* Background services where required
-* Firebase or notification integration that requires Android-specific handling
+```text
+Supabase
+   │
+   └── PostgreSQL
+          │
+          ├── Tables
+          ├── Constraints
+          ├── Transactions
+          └── Row-Level Security
+```
 
-The majority of the application logic remains in Flutter.
+Supabase is infrastructure/platform support.
+
+It does not replace Node.js as the application's authoritative business-logic boundary.
 
 ---
 
-# Step 2.5 — Trust Boundary
+## 8.5 Firebase Authentication
 
-The client is considered **untrusted**.
+Firebase Authentication is responsible for:
 
-A request coming from Flutter must not be treated as proof that the user has permission to perform an operation.
+* User registration
+* Sign-in
+* Identity management
+* Authentication sessions/tokens
+
+The backend must validate the authenticated identity before processing protected operations.
+
+Firebase Authentication does not determine whether a user can modify a particular group.
+
+That decision belongs to application authorization rules.
+
+---
+
+## 8.6 Firebase Cloud Messaging
+
+Firebase Cloud Messaging (FCM) is responsible for push notification delivery.
+
+Examples:
+
+```text
+New expense added
+       ↓
+Node.js event
+       ↓
+Notification service
+       ↓
+FCM
+       ↓
+User device
+```
+
+Notifications are not the authoritative ledger.
+
+---
+
+## 8.7 Android Java
+
+Android Java is reserved for native Android capabilities that cannot or should not be implemented entirely through Flutter.
+
+Examples may include:
+
+* Native platform integrations
+* Android-specific services
+* Platform channels
+* OS-level functionality
+
+Android Java does not own application financial state.
+
+---
+
+# 9. High-Level System Architecture
 
 ```mermaid
-flowchart TD
-    F["Flutter Client<br/>Untrusted"] -->|"HTTPS Request"| N["Node.js API"]
+flowchart TB
 
-    N --> AUTH["Authenticate User"]
-    AUTH --> AUTHZ["Authorize Operation"]
-    AUTHZ --> VALIDATE["Validate Input"]
-    VALIDATE --> BUSINESS["Business Logic"]
+    USER["User"]
 
-    BUSINESS --> DB["PostgreSQL"]
+    subgraph CLIENT["Client Layer"]
+        FLUTTER["Flutter Application"]
+        LOCAL["Local / Offline Storage"]
+        ANDROID["Android Java Native Layer"]
+    end
 
-    DB --> BUSINESS
-    BUSINESS --> RESPONSE["API Response"]
+    subgraph BACKEND["Backend Layer"]
+        API["Node.js API"]
+        AUTHZ["Authentication Context"]
+        VALIDATION["Input Validation"]
+        AUTHORIZATION["Authorization"]
+        BUSINESS["Business Logic"]
+        BALANCE["Balance Engine"]
+        SETTLEMENT["Settlement Engine"]
+        SYNC["Synchronization"]
+        WS["WebSocket Events"]
+        NOTIFICATION["Notification Events"]
+    end
 
-    RESPONSE --> F
+    subgraph DATA["Data Layer"]
+        SUPABASE["Supabase"]
+        POSTGRES["PostgreSQL"]
+    end
+
+    FIREBASE_AUTH["Firebase Authentication"]
+    FCM["Firebase Cloud Messaging"]
+
+    USER --> FLUTTER
+    FLUTTER <--> LOCAL
+    FLUTTER <--> ANDROID
+
+    FLUTTER -->|"HTTPS / REST"| API
+
+    FLUTTER -->|"Authentication"| FIREBASE_AUTH
+    FIREBASE_AUTH -->|"Authenticated identity"| API
+
+    API --> AUTHZ
+    AUTHZ --> VALIDATION
+    VALIDATION --> AUTHORIZATION
+    AUTHORIZATION --> BUSINESS
+
+    BUSINESS --> BALANCE
+    BUSINESS --> SETTLEMENT
+    BUSINESS --> SYNC
+
+    BALANCE --> POSTGRES
+    SETTLEMENT --> POSTGRES
+    BUSINESS --> POSTGRES
+    SYNC --> POSTGRES
+
+    SUPABASE --> POSTGRES
+
+    BUSINESS --> WS
+    BUSINESS --> NOTIFICATION
+
+    NOTIFICATION --> FCM
+    FCM --> USER
+
+    WS --> FLUTTER
 ```
+
+---
+
+# 10. Trust Boundary
+
+The most important security principle is:
+
+> **The client is never trusted.**
+
+The trust boundary can be represented as:
+
+```mermaid
+flowchart LR
+
+    subgraph UNTRUSTED["UNTRUSTED ENVIRONMENT"]
+        USER["User"]
+        FLUTTER["Flutter"]
+        LOCAL["Local / Offline Data"]
+    end
+
+    subgraph TRUSTED["TRUSTED SERVER ENVIRONMENT"]
+        NODE["Node.js"]
+        VALIDATE["Validation"]
+        AUTHZ["Authorization"]
+        LOGIC["Business Logic"]
+        DB["PostgreSQL"]
+    end
+
+    USER --> FLUTTER
+    FLUTTER <--> LOCAL
+
+    FLUTTER -->|"HTTPS"| NODE
+
+    NODE --> VALIDATE
+    VALIDATE --> AUTHZ
+    AUTHZ --> LOGIC
+    LOGIC --> DB
+```
+
+Everything crossing from Flutter into Node.js must be treated as untrusted input.
 
 For example, Flutter may send:
 
@@ -184,49 +629,212 @@ For example, Flutter may send:
 }
 ```
 
-The backend must not assume that the current user is allowed to modify group `123`.
+The backend must not assume the user has access to group `123`.
 
-Node.js should verify the request in this order:
+Instead:
 
 ```text
-Is the user authenticated?
-        ↓
-Does the group exist?
-        ↓
-Is the user a member of the group?
-        ↓
-Is the requested operation allowed?
-        ↓
-Is the input valid?
-        ↓
-Execute the business operation
-        ↓
-Commit the database transaction
+Authenticated?
+      ↓
+Does group exist?
+      ↓
+Is user a member?
+      ↓
+Does user have required permission?
+      ↓
+Is request valid?
+      ↓
+Is expense valid?
+      ↓
+Perform transaction
 ```
-
-The important rule is:
-
-> **The client is never trusted for authorization.**
 
 ---
 
-# Step 2.6 — Initial API Boundary
+# 11. Authentication and Authorization Model
 
-The initial API will use versioning through the `/api/v1` prefix.
+Authentication and authorization are separate.
 
-This allows future API versions to be introduced without immediately breaking existing clients.
+```mermaid
+flowchart TD
 
-## Authentication
+    CLIENT["Flutter"]
+
+    AUTH["Firebase Authentication"]
+    TOKEN["Authenticated Identity"]
+
+    API["Node.js API"]
+    AUTHENTICATE["Authenticate Request"]
+    GROUP["Load Group"]
+    MEMBERSHIP["Check Group Membership"]
+    ROLE["Check Required Permission"]
+    OPERATION["Perform Operation"]
+
+    CLIENT --> AUTH
+    AUTH --> TOKEN
+
+    CLIENT --> API
+    TOKEN --> API
+
+    API --> AUTHENTICATE
+    AUTHENTICATE --> GROUP
+    GROUP --> MEMBERSHIP
+    MEMBERSHIP --> ROLE
+    ROLE --> OPERATION
+```
+
+A valid Firebase identity does not automatically grant access to every SplitLedger resource.
+
+For group-specific operations, Node.js must check the user's membership in the requested group.
+
+---
+
+# 12. Data Ownership Model
+
+The system follows this ownership model:
+
+| Concern                     | Owner                   |
+| --------------------------- | ----------------------- |
+| UI                          | Flutter                 |
+| Client state                | Flutter                 |
+| Offline cache               | Flutter                 |
+| Authentication              | Firebase Authentication |
+| API                         | Node.js                 |
+| Authorization               | Node.js                 |
+| Business logic              | Node.js                 |
+| Balance engine              | Node.js                 |
+| Settlement engine           | Node.js                 |
+| Persistent financial data   | PostgreSQL              |
+| Database constraints        | PostgreSQL              |
+| Transactions                | PostgreSQL              |
+| Push notification delivery  | FCM                     |
+| Native Android capabilities | Android Java            |
+
+---
+
+# 13. Source of Truth
+
+## 13.1 Financial Source of Truth
+
+> **PostgreSQL is the authoritative source of truth for financial data.**
+
+This means:
+
+```text
+Flutter cache
+     ≠
+Authoritative ledger
+```
+
+and:
+
+```text
+Firebase
+     ≠
+Financial ledger
+```
+
+and:
+
+```text
+Node.js memory
+     ≠
+Permanent financial storage
+```
+
+Instead:
+
+```text
+                    ┌─────────────────┐
+                    │    Flutter      │
+                    │ Cache / Offline │
+                    └────────┬────────┘
+                             │
+                             │ synchronization
+                             ▼
+                    ┌─────────────────┐
+                    │    Node.js      │
+                    │ Business Logic  │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   PostgreSQL    │
+                    │ SOURCE OF TRUTH │
+                    └─────────────────┘
+```
+
+This decision is fundamental to the offline synchronization design.
+
+---
+
+# 14. Offline Data Principle
+
+Flutter may create and retain local records when the device temporarily has no network connection.
+
+However:
+
+> Local records are pending state until accepted by the server.
+
+Conceptually:
+
+```text
+LOCAL
+  │
+  │ pending
+  ▼
+SYNC QUEUE
+  │
+  │ network available
+  ▼
+NODE.JS
+  │
+  │ validate + authorize
+  ▼
+POSTGRESQL
+  │
+  │ accepted
+  ▼
+AUTHORITATIVE STATE
+```
+
+The synchronization system must eventually handle:
+
+* Network failures
+* Retry
+* Duplicate requests
+* Conflicting updates
+* Failed validation
+* Server rejection
+* Recovery after application restart
+
+Detailed synchronization architecture will be designed in a later milestone.
+
+---
+
+# 15. API Design
+
+The initial API uses explicit versioning:
+
+```text
+/api/v1
+```
+
+This establishes a stable public API boundary and allows future versions to coexist if breaking changes become necessary.
+
+---
+
+## 15.1 Authentication
 
 ```http
 GET /api/v1/me
 ```
 
-Returns information about the currently authenticated user.
+Returns information about the currently authenticated application user.
 
 ---
 
-## Groups
+## 15.2 Groups
 
 ```http
 POST   /api/v1/groups
@@ -237,7 +845,7 @@ POST   /api/v1/groups/:groupId/members
 
 ---
 
-## Expenses
+## 15.3 Expenses
 
 ```http
 POST   /api/v1/groups/:groupId/expenses
@@ -249,7 +857,7 @@ DELETE /api/v1/expenses/:expenseId
 
 ---
 
-## Balances
+## 15.4 Balances
 
 ```http
 GET /api/v1/groups/:groupId/balances
@@ -257,582 +865,638 @@ GET /api/v1/groups/:groupId/balances
 
 ---
 
-## Settlements
+## 15.5 Settlements
 
 ```http
 GET  /api/v1/groups/:groupId/settlements
 POST /api/v1/groups/:groupId/settlements
 ```
 
-These endpoints represent the initial API boundary. Request and response schemas will be defined separately during API design.
+---
+
+# 16. API Request Processing Pipeline
+
+Every protected request should conceptually pass through:
+
+```mermaid
+flowchart LR
+
+    REQUEST["HTTP Request"]
+    AUTH["Authenticate"]
+    AUTHZ["Authorize"]
+    VALIDATE["Validate Input"]
+    BUSINESS["Business Logic"]
+    TX["Database Transaction"]
+    RESPONSE["HTTP Response"]
+
+    REQUEST --> AUTH
+    AUTH --> AUTHZ
+    AUTHZ --> VALIDATE
+    VALIDATE --> BUSINESS
+    BUSINESS --> TX
+    TX --> RESPONSE
+```
+
+The order is intentional.
+
+The system must not perform business operations before authorization and validation.
 
 ---
 
-# Step 2.7 — Initial Expense Flow
+# 17. Expense Creation Flow
 
-When a user creates an expense, the request follows this general flow:
+The first important end-to-end system flow is expense creation.
 
 ```mermaid
 flowchart TD
-    U["User"] --> F["Flutter"]
 
-    F -->|"POST /api/v1/groups/:groupId/expenses"| N["Node.js API"]
+    USER["User"]
+    FLUTTER["Flutter"]
 
-    N --> AUTH["Authenticate"]
-    AUTH --> AUTHZ["Authorize Group Access"]
-    AUTHZ --> VALIDATE["Validate Request"]
+    API["Node.js API"]
 
-    VALIDATE --> SPLIT["Validate / Calculate Expense Split"]
+    AUTH["Authenticate"]
+    AUTHZ["Authorize Group Membership"]
+    VALIDATE["Validate Input"]
+    SPLIT["Calculate / Validate Split"]
+    TX["Database Transaction"]
 
-    SPLIT --> TX["Database Transaction"]
+    DB["PostgreSQL"]
 
-    TX --> DB["PostgreSQL"]
+    EVENT["Domain / Real-Time Event"]
+    WS["WebSocket Event"]
+    NOTIF["Notification Event"]
 
-    DB --> COMMIT["Commit Transaction"]
+    MEMBERS["Group Members"]
 
-    COMMIT --> EVENT["Publish Update Event"]
+    USER -->|"Creates expense"| FLUTTER
 
-    EVENT --> WS["WebSocket"]
-    EVENT --> FCM["Firebase FCM"]
+    FLUTTER -->|"POST /api/v1/groups/:id/expenses"| API
 
-    WS --> MEMBERS["Connected Group Members"]
-    FCM --> NOTIFIED["Offline / Background Members"]
+    API --> AUTH
+    AUTH --> AUTHZ
+    AUTHZ --> VALIDATE
+    VALIDATE --> SPLIT
+    SPLIT --> TX
+    TX --> DB
+
+    DB --> EVENT
+
+    EVENT --> WS
+    EVENT --> NOTIF
+
+    WS --> MEMBERS
+    NOTIF --> MEMBERS
 ```
 
-The database transaction is the important part of the flow.
-
-An expense should not be considered successfully created until the required database changes have been committed successfully.
+The server is responsible for validating the expense and its split before committing the transaction.
 
 ---
 
-# Step 2.8 — Source of Truth
+# 18. Expense Processing Rules
 
-PostgreSQL is the authoritative source of truth for all financial data.
-
-This includes:
-
-* Expenses
-* Expense splits
-* Group membership
-* Balances
-* Settlements
-* Other ledger-related records
-
-Flutter may maintain cached or offline data, but that data is not authoritative.
+When an expense is created:
 
 ```text
-Flutter local data
-        ≠
-Authoritative ledger
+1. Authenticate the user
+2. Verify the group exists
+3. Verify the user belongs to the group
+4. Validate the request payload
+5. Validate amount
+6. Validate payer
+7. Validate participants
+8. Validate split method
+9. Validate split amounts/percentages
+10. Calculate authoritative shares
+11. Begin database transaction
+12. Persist expense
+13. Persist participant shares
+14. Commit transaction
+15. Emit appropriate events
 ```
 
-Similarly:
+If any critical database operation fails:
 
 ```text
-Firebase
-        ≠
-Financial ledger
+Transaction
+    ↓
+ROLLBACK
 ```
 
-and:
+No partially-created financial record should remain.
+
+---
+
+# 19. Settlement Flow
+
+Settlements are financial operations and must be treated transactionally.
+
+```mermaid
+flowchart TD
+
+    USER["User"]
+    FLUTTER["Flutter"]
+
+    API["Node.js API"]
+
+    AUTH["Authenticate"]
+    AUTHZ["Authorize Group Membership"]
+    VALIDATE["Validate Settlement"]
+    BALANCE["Read Authoritative Balance"]
+    TX["Database Transaction"]
+
+    DB["PostgreSQL"]
+
+    EVENT["Settlement Event"]
+    WS["WebSocket"]
+    NOTIF["Notification"]
+
+    USER --> FLUTTER
+    FLUTTER -->|"POST /api/v1/groups/:groupId/settlements"| API
+
+    API --> AUTH
+    AUTH --> AUTHZ
+    AUTHZ --> VALIDATE
+    VALIDATE --> BALANCE
+    BALANCE --> DB
+    BALANCE --> TX
+
+    TX --> DB
+    DB --> EVENT
+
+    EVENT --> WS
+    EVENT --> NOTIF
+```
+
+The settlement request must be validated against authoritative server state.
+
+---
+
+# 20. Balance Model
+
+Balances are derived from financial activity.
+
+Conceptually:
+
+```text
+Expense
+   │
+   ├── Payer
+   │
+   └── Participant Shares
+            │
+            ▼
+       Ledger Effect
+            │
+            ▼
+         Balance
+```
+
+Example:
+
+```text
+Expense: ₹1,000
+
+Raj paid ₹1,000
+
+Raj's share     ₹500
+Amit's share    ₹300
+Rahul's share   ₹200
+```
+
+Result:
+
+```text
+Raj     +₹500
+Amit    -₹300
+Rahul   -₹200
+```
+
+The authoritative balance is calculated from the database state rather than accepted from Flutter.
+
+---
+
+# 21. Real-Time Event Flow
+
+After successful database operations, the backend may notify connected clients.
+
+```mermaid
+flowchart LR
+
+    ACTION["Successful Financial Operation"]
+    DB["PostgreSQL"]
+    NODE["Node.js"]
+    WS["WebSocket Event"]
+    CLIENTS["Connected Group Members"]
+    FCM["Firebase Cloud Messaging"]
+    DEVICES["User Devices"]
+
+    ACTION --> DB
+    DB --> NODE
+
+    NODE --> WS
+    WS --> CLIENTS
+
+    NODE --> FCM
+    FCM --> DEVICES
+```
+
+Real-time events improve responsiveness, but they are not the source of truth.
+
+If a WebSocket event is lost:
+
+```text
+Client
+  ↓
+API
+  ↓
+PostgreSQL
+```
+
+can still recover the authoritative state.
+
+---
+
+# 22. Failure and Reliability Model
+
+The architecture assumes that networks and external services can fail.
+
+Examples:
+
+```text
+Flutter
+   │
+   X
+Network failure
+```
+
+or:
 
 ```text
 Node.js
-        ≠
-Permanent storage
+   │
+   X
+Database temporarily unavailable
 ```
 
-The authoritative financial state is stored in PostgreSQL.
+or:
 
-This distinction is important for the offline synchronization design.
-
----
-
-# Step 2.9 — System Architecture Diagram
-
-The initial architecture is:
-
-```mermaid
-flowchart TB
-    USER["User"]
-
-    subgraph CLIENT["Client"]
-        FLUTTER["Flutter Application"]
-        LOCAL["Local / Offline Storage"]
-        ANDROID["Android Native Layer"]
-    end
-
-    subgraph BACKEND["Backend"]
-        NODE["Node.js API"]
-        WS["WebSocket Server"]
-        LOGIC["Business Logic"]
-    end
-
-    subgraph DATA["Data Layer"]
-        SUPABASE["Supabase"]
-        POSTGRES["PostgreSQL"]
-    end
-
-    subgraph FIREBASE["Firebase"]
-        AUTH["Firebase Authentication"]
-        FCM["Firebase Cloud Messaging"]
-    end
-
-    USER --> FLUTTER
-
-    FLUTTER --> LOCAL
-    FLUTTER --> ANDROID
-
-    FLUTTER -->|"HTTPS / REST"| NODE
-
-    NODE --> LOGIC
-    NODE --> POSTGRES
-
-    LOGIC --> POSTGRES
-
-    NODE --> WS
-    WS --> FLUTTER
-
-    FLUTTER --> AUTH
-    AUTH --> NODE
-
-    NODE --> FCM
-    FCM --> FLUTTER
-
-    SUPABASE --> POSTGRES
+```text
+Node.js
+   │
+   X
+Notification delivery failure
 ```
 
-## Component Responsibilities
+The system must distinguish between:
 
-| Component               | Responsibility                                          |
-| ----------------------- | ------------------------------------------------------- |
-| Flutter                 | UI, user interaction, local state, API communication    |
-| Local Storage           | Offline data and pending synchronization operations     |
-| Android Native Layer    | Android-specific functionality                          |
-| Node.js                 | API, authorization, validation, business logic          |
-| WebSocket               | Real-time updates                                       |
-| Supabase                | Managed PostgreSQL infrastructure and database services |
-| PostgreSQL              | Authoritative application and financial data            |
-| Firebase Authentication | User authentication                                     |
-| Firebase FCM            | Push notifications                                      |
+### Financial operation failure
 
-The architecture keeps the financial ledger behind the backend and database boundary. The Flutter application can cache and synchronize data, but it cannot make authoritative decisions about balances, permissions, or settlements.
-# Step 2.3 — Non-Functional Requirements
+The expense or settlement was not committed.
 
-## Security
+### Notification failure
 
-The application must:
+The financial operation succeeded, but a notification could not be delivered.
 
-* Authenticate users before allowing access to protected resources.
-* Authorize users before allowing group operations.
-* Never rely on authorization information sent by the client.
-* Keep API keys, credentials, and other secrets out of the client application.
-* Validate all API input on the server.
-* Enforce appropriate database-level access policies.
-* Prevent users from accessing or modifying data belonging to groups they are not members of.
+These must not be treated as the same failure.
 
----
+For example:
 
-## Reliability
+```text
+Expense transaction
+       │
+       ▼
+PostgreSQL COMMIT
+       │
+       ├──────────────► Financial operation succeeded
+       │
+       ▼
+Notification
+       │
+       X
+       │
+       ▼
+Notification failed
+```
 
-The application should:
-
-* Handle API failures gracefully.
-* Prevent duplicate expense creation when the same request is retried.
-* Preserve locally created expenses when the device temporarily loses network connectivity.
-* Retry failed synchronization operations where appropriate.
-* Recover from synchronization failures without losing locally created data.
-* Keep the financial ledger consistent even when multiple operations occur at the same time.
+The notification failure must not roll back an already committed financial transaction unless the architecture explicitly requires transactional notification semantics.
 
 ---
 
-## Performance
+# 23. Duplicate Expense Protection
 
-The initial version does not require aggressive optimization.
+Reliability requires protection against duplicate requests.
 
-The following are the initial performance expectations:
+A common failure scenario:
 
-* Normal API operations should be responsive.
-* Network operations should not block the UI.
-* Database queries should use appropriate indexes.
-* Large lists should be loaded using pagination where necessary.
-* Expensive calculations should not unnecessarily run on the client.
+```text
+Flutter
+  │
+  │ POST expense
+  ▼
+Node.js
+  │
+  ▼
+PostgreSQL
+  │
+  │ COMMIT
+  ▼
+Network failure
+  │
+  ▼
+Flutter thinks request failed
+  │
+  │ retry
+  ▼
+Node.js
+```
 
-Performance will be measured and optimized based on actual usage and profiling rather than assumptions.
+Without protection, the same expense could be created twice.
 
----
+Therefore, the future synchronization/API design must support an idempotency strategy.
 
-## Maintainability
+Conceptually:
 
-The system should follow:
+```text
+Client Operation ID
+        │
+        ▼
+Node.js
+        │
+        ▼
+PostgreSQL uniqueness constraint
+        │
+        ├── first request → create
+        │
+        └── retry         → return existing result
+```
 
-* Separation of concerns
-* Feature-based Flutter architecture
-* Layered backend architecture
-* Clear API boundaries
-* Automated tests
-* Documentation
-* Consistent coding conventions
-* Meaningful Git history
-
-Business logic should not be duplicated between the Flutter application and the backend.
-
----
-
-# Step 2.4 — System Boundaries
-
-The system is divided into several major components. Each component has a clearly defined responsibility.
-
-## Flutter
-
-Flutter is responsible for:
-
-* UI rendering
-* User interaction
-* Local application state
-* Local and offline data
-* Calling backend APIs
-* Displaying server results
-* Handling client-side validation for user experience
-
-Flutter is **not** responsible for:
-
-* Authoritative balance calculations
-* Authorization decisions
-* Settlement decisions
-* Maintaining the authoritative financial ledger
-
-The client may calculate or display temporary values for a better user experience, but the server remains authoritative.
+The exact implementation will be defined during the synchronization and database design milestones.
 
 ---
 
-## Node.js
+# 24. Database Integrity Principles
 
-Node.js is responsible for:
-
-* REST API
-* Authentication verification
-* Authorization
-* Request validation
-* Business logic
-* Expense processing
-* Balance calculations
-* Settlement processing
-* Synchronization
-* WebSocket events
-
-The backend is the main enforcement point for application rules.
-
----
-
-## PostgreSQL / Supabase
-
-PostgreSQL is responsible for:
-
-* Persistent ledger data
-* Users and group relationships
-* Expenses
-* Expense splits
-* Balances and settlement records
-* Database relationships
-* Constraints
-* Transactions
-* Data consistency
-
-Supabase provides the managed PostgreSQL infrastructure and related database services.
-
-PostgreSQL is the authoritative source of truth for financial data.
-
----
-
-## Firebase
-
-Firebase is responsible for services that are better handled outside the core ledger:
-
-* Authentication
-* Push notifications through Firebase Cloud Messaging (FCM)
-
-Firebase is **not** the source of truth for expenses, balances, or settlements.
-
----
-
-## Android Java
-
-Android-specific Java/Kotlin code may be used where native Android integration is required.
+PostgreSQL must protect important invariants wherever practical.
 
 Examples include:
 
-* Platform-specific functionality
-* Native Android integrations
-* Background services where required
-* Firebase or notification integration that requires Android-specific handling
+```text
+Expense belongs to an existing group
+Membership references an existing user
+Membership references an existing group
+Expense participant belongs to the relevant group
+Settlement belongs to the relevant group
+Amounts cannot violate monetary constraints
+Required relationships cannot be NULL
+Duplicate memberships should be prevented
+```
 
-The majority of the application logic remains in Flutter.
+Application-level validation is necessary, but database constraints provide an additional safety boundary.
 
 ---
 
-# Step 2.5 — Trust Boundary
+# 25. Authorization Model
 
-The client is considered **untrusted**.
+Authorization must be based on the resource being accessed.
 
-A request coming from Flutter must not be treated as proof that the user has permission to perform an operation.
-
-```mermaid
-flowchart TD
-    F["Flutter Client<br/>Untrusted"] -->|"HTTPS Request"| N["Node.js API"]
-
-    N --> AUTH["Authenticate User"]
-    AUTH --> AUTHZ["Authorize Operation"]
-    AUTHZ --> VALIDATE["Validate Input"]
-    VALIDATE --> BUSINESS["Business Logic"]
-
-    BUSINESS --> DB["PostgreSQL"]
-
-    DB --> BUSINESS
-    BUSINESS --> RESPONSE["API Response"]
-
-    RESPONSE --> F
-```
-
-For example, Flutter may send:
-
-```json
-{
-  "amount": 500,
-  "groupId": "123"
-}
-```
-
-The backend must not assume that the current user is allowed to modify group `123`.
-
-Node.js should verify the request in this order:
+For a group operation:
 
 ```text
-Is the user authenticated?
-        ↓
-Does the group exist?
-        ↓
-Is the user a member of the group?
-        ↓
-Is the requested operation allowed?
-        ↓
-Is the input valid?
-        ↓
-Execute the business operation
-        ↓
-Commit the database transaction
+Authenticated User
+        │
+        ▼
+Requested Group
+        │
+        ▼
+Membership Exists?
+        │
+     ┌──┴──┐
+     │     │
+    YES    NO
+     │     │
+     ▼     ▼
+Allowed  Denied
 ```
 
-The important rule is:
-
-> **The client is never trusted for authorization.**
-
----
-
-# Step 2.6 — Initial API Boundary
-
-The initial API will use versioning through the `/api/v1` prefix.
-
-This allows future API versions to be introduced without immediately breaking existing clients.
-
-## Authentication
-
-```http
-GET /api/v1/me
-```
-
-Returns information about the currently authenticated user.
-
----
-
-## Groups
-
-```http
-POST   /api/v1/groups
-GET    /api/v1/groups
-GET    /api/v1/groups/:groupId
-POST   /api/v1/groups/:groupId/members
-```
-
----
-
-## Expenses
-
-```http
-POST   /api/v1/groups/:groupId/expenses
-GET    /api/v1/groups/:groupId/expenses
-GET    /api/v1/expenses/:expenseId
-PATCH  /api/v1/expenses/:expenseId
-DELETE /api/v1/expenses/:expenseId
-```
-
----
-
-## Balances
-
-```http
-GET /api/v1/groups/:groupId/balances
-```
-
----
-
-## Settlements
-
-```http
-GET  /api/v1/groups/:groupId/settlements
-POST /api/v1/groups/:groupId/settlements
-```
-
-These endpoints represent the initial API boundary. Request and response schemas will be defined separately during API design.
-
----
-
-# Step 2.7 — Initial Expense Flow
-
-When a user creates an expense, the request follows this general flow:
-
-```mermaid
-flowchart TD
-    U["User"] --> F["Flutter"]
-
-    F -->|"POST /api/v1/groups/:groupId/expenses"| N["Node.js API"]
-
-    N --> AUTH["Authenticate"]
-    AUTH --> AUTHZ["Authorize Group Access"]
-    AUTHZ --> VALIDATE["Validate Request"]
-
-    VALIDATE --> SPLIT["Validate / Calculate Expense Split"]
-
-    SPLIT --> TX["Database Transaction"]
-
-    TX --> DB["PostgreSQL"]
-
-    DB --> COMMIT["Commit Transaction"]
-
-    COMMIT --> EVENT["Publish Update Event"]
-
-    EVENT --> WS["WebSocket"]
-    EVENT --> FCM["Firebase FCM"]
-
-    WS --> MEMBERS["Connected Group Members"]
-    FCM --> NOTIFIED["Offline / Background Members"]
-```
-
-The database transaction is the important part of the flow.
-
-An expense should not be considered successfully created until the required database changes have been committed successfully.
-
----
-
-# Step 2.8 — Source of Truth
-
-PostgreSQL is the authoritative source of truth for all financial data.
-
-This includes:
-
-* Expenses
-* Expense splits
-* Group membership
-* Balances
-* Settlements
-* Other ledger-related records
-
-Flutter may maintain cached or offline data, but that data is not authoritative.
+For operations requiring ownership or additional permissions:
 
 ```text
-Flutter local data
-        ≠
-Authoritative ledger
+Authenticated User
+        │
+        ▼
+Group Membership
+        │
+        ▼
+Required Role / Ownership
+        │
+        ▼
+Permission Check
+        │
+        ▼
+Operation
 ```
 
-Similarly:
-
-```text
-Firebase
-        ≠
-Financial ledger
-```
-
-and:
-
-```text
-Node.js
-        ≠
-Permanent storage
-```
-
-The authoritative financial state is stored in PostgreSQL.
-
-This distinction is important for the offline synchronization design.
+The client must never be allowed to decide its own authorization level.
 
 ---
 
-# Step 2.9 — System Architecture Diagram
+# 26. Architectural Principles
 
-The initial architecture is:
+SplitLedger follows these principles:
+
+## 26.1 Client is not trusted
+
+Flutter input must be validated by the backend.
+
+---
+
+## 26.2 Authentication is not authorization
+
+A valid user identity does not imply access to every group.
+
+---
+
+## 26.3 PostgreSQL is authoritative
+
+Financial state is ultimately determined by PostgreSQL.
+
+---
+
+## 26.4 Business rules belong on the server
+
+Balance calculations, settlement rules, and permission checks must not depend on Flutter behaving correctly.
+
+---
+
+## 26.5 Database transactions protect financial operations
+
+Operations that modify related financial records should be atomic.
+
+---
+
+## 26.6 Offline data is temporary until synchronized
+
+Local data improves reliability and user experience but does not override authoritative server state.
+
+---
+
+## 26.7 Events are derived from successful state changes
+
+WebSocket and notification events should represent changes to authoritative state rather than becoming the state themselves.
+
+---
+
+## 26.8 API versioning starts from version one
+
+All API endpoints are placed under:
+
+```text
+/api/v1
+```
+
+---
+
+# 27. Initial Architecture Diagram
+
+The following diagram represents the current architecture at the end of Milestone 2.
 
 ```mermaid
 flowchart TB
+
     USER["User"]
 
-    subgraph CLIENT["Client"]
-        FLUTTER["Flutter Application"]
-        LOCAL["Local / Offline Storage"]
-        ANDROID["Android Native Layer"]
+    subgraph MOBILE["Mobile Application"]
+        FLUTTER["Flutter"]
+        STATE["Local State"]
+        OFFLINE["Offline Storage"]
+        ANDROID["Android Java"]
     end
 
-    subgraph BACKEND["Backend"]
-        NODE["Node.js API"]
-        WS["WebSocket Server"]
-        LOGIC["Business Logic"]
+    subgraph IDENTITY["Identity"]
+        FIREBASE_AUTH["Firebase Authentication"]
     end
 
-    subgraph DATA["Data Layer"]
-        SUPABASE["Supabase"]
+    subgraph SERVER["Application Server"]
+        NODE["Node.js"]
+        API["REST API /api/v1"]
+        AUTH["Authentication Context"]
+        AUTHZ["Authorization"]
+        VALIDATION["Validation"]
+        DOMAIN["Domain / Business Logic"]
+        BALANCES["Balance Engine"]
+        SETTLEMENTS["Settlement Engine"]
+        SYNC["Synchronization"]
+        REALTIME["WebSocket Events"]
+        NOTIFICATIONS["Notification Events"]
+    end
+
+    subgraph DATABASE["Persistence"]
+        SUPABASE["Supabase Platform"]
         POSTGRES["PostgreSQL"]
     end
 
-    subgraph FIREBASE["Firebase"]
-        AUTH["Firebase Authentication"]
-        FCM["Firebase Cloud Messaging"]
-    end
+    FCM["Firebase Cloud Messaging"]
 
     USER --> FLUTTER
 
-    FLUTTER --> LOCAL
-    FLUTTER --> ANDROID
+    FLUTTER --> STATE
+    STATE --> OFFLINE
+    FLUTTER <--> ANDROID
 
-    FLUTTER -->|"HTTPS / REST"| NODE
+    FLUTTER <--> FIREBASE_AUTH
+    FLUTTER -->|"HTTPS"| API
 
-    NODE --> LOGIC
-    NODE --> POSTGRES
+    API --> NODE
 
-    LOGIC --> POSTGRES
+    NODE --> AUTH
+    AUTH --> AUTHZ
+    AUTHZ --> VALIDATION
+    VALIDATION --> DOMAIN
 
-    NODE --> WS
-    WS --> FLUTTER
+    DOMAIN --> BALANCES
+    DOMAIN --> SETTLEMENTS
+    DOMAIN --> SYNC
 
-    FLUTTER --> AUTH
-    AUTH --> NODE
-
-    NODE --> FCM
-    FCM --> FLUTTER
+    DOMAIN --> POSTGRES
+    BALANCES --> POSTGRES
+    SETTLEMENTS --> POSTGRES
+    SYNC --> POSTGRES
 
     SUPABASE --> POSTGRES
+
+    DOMAIN --> REALTIME
+    DOMAIN --> NOTIFICATIONS
+
+    REALTIME --> FLUTTER
+    NOTIFICATIONS --> FCM
+    FCM --> USER
 ```
 
-## Component Responsibilities
+---
 
-| Component               | Responsibility                                          |
-| ----------------------- | ------------------------------------------------------- |
-| Flutter                 | UI, user interaction, local state, API communication    |
-| Local Storage           | Offline data and pending synchronization operations     |
-| Android Native Layer    | Android-specific functionality                          |
-| Node.js                 | API, authorization, validation, business logic          |
-| WebSocket               | Real-time updates                                       |
-| Supabase                | Managed PostgreSQL infrastructure and database services |
-| PostgreSQL              | Authoritative application and financial data            |
-| Firebase Authentication | User authentication                                     |
-| Firebase FCM            | Push notifications                                      |
+# 28. System Flow Summary
 
-The architecture keeps the financial ledger behind the backend and database boundary. The Flutter application can cache and synchronize data, but it cannot make authoritative decisions about balances, permissions, or settlements.
+The complete conceptual flow is:
+
+```text
+                         ┌─────────────┐
+                         │    User     │
+                         └──────┬──────┘
+                                │
+                                ▼
+                         ┌─────────────┐
+                         │   Flutter   │
+                         └──────┬──────┘
+                                │
+                          HTTPS / REST
+                                │
+                                ▼
+                         ┌─────────────┐
+                         │   Node.js   │
+                         └──────┬──────┘
+                                │
+                 ┌──────────────┼──────────────┐
+                 │              │              │
+                 ▼              ▼              ▼
+            Validation     Authorization   Business Logic
+                 │              │              │
+                 └──────────────┼──────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   PostgreSQL    │
+                       │ SOURCE OF TRUTH │
+                       └────────┬────────┘
+                                │
+                     ┌──────────┴──────────┐
+                     │                     │
+                     ▼                     ▼
+               WebSocket                FCM
+                     │                     │
+                     ▼                     ▼
+                 Flutter                Devices
+```
+
+---
+
+# 29. Initial API Boundary Summary
+
+| Domain         | Method | Endpoint                              | Purpose            |
+| -------------- | ------ | ------------------------------------- | ------------------ |
+| Authentication | GET    | `/api/v1/me`                          | Get current user   |
+| Groups         | POST   | `/api/v1/groups`                      | Create group       |
+| Groups         | GET    | `/api/v1/groups`                      | List user's groups |
+| Groups         | GET    | `/api/v1/groups/:groupId`             | Get group details  |
+| Groups         | POST   | `/api/v1/groups/:groupId/members`     | Add member         |
+| Expenses       | POST   | `/api/v1/groups/:groupId/expenses`    | Create expense     |
+| Expenses       | GET    | `/api/v1/groups/:groupId/expenses`    | List expenses      |
+| Expenses       | GET    | `/api/v1/expenses/:expenseId`         | Get expense        |
+| Expenses       | PATCH  | `/api/v1/expenses/:expenseId`         | Update expense     |
+| Expenses       | DELETE | `/api/v1/expenses/:expenseId`         | Delete expense     |
+| Balances       | GET    | `/api/v1/groups/:groupId/balances`    | Get balances       |
+| Settlements    | GET    | `/api/v1/groups/:groupId/settlements` | List settlements   |
+| Settlements    | POST   | `/api/v1/groups/:groupId/settlements` | Create settlement  |
+
+---
+
