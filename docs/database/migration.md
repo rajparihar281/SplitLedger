@@ -234,14 +234,14 @@ Stores the SplitLedger application user.
 ### Important fields
 
 * `id`
-* `firebase_uid`
+* `auth.users.id`
 * `name`
 * `email`
 * `avatar_url`
 * `created_at`
 * `updated_at`
 
-`firebase_uid` connects the application user to Firebase Authentication.
+`auth.users.id` connects the application user to Supabase Auth.
 
 ---
 
@@ -386,7 +386,7 @@ The database enforces structural integrity wherever practical.
 
 Examples include:
 
-* `firebase_uid` must be unique
+* `auth.users.id` must be unique
 * `group_id + user_id` must be unique
 * `expense_id + user_id` must be unique
 * Expense amount must be greater than `0`
@@ -514,10 +514,10 @@ Flutter local data
 Authoritative ledger
 ```
 
-Firebase Authentication is responsible for identity, not financial records.
+Supabase Auth is responsible for identity, not financial records.
 
 ```text
-Firebase Authentication
+Supabase Auth
         ≠
 Financial ledger
 ```

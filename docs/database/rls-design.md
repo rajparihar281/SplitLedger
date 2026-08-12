@@ -449,34 +449,34 @@ RLS should enforce the database-level boundary independently of the client.
 
 ## Authentication Identity
 
-SplitLedger uses Firebase Authentication as its authentication provider.
+SplitLedger uses Supabase Auth as its authentication provider.
 
 The application maintains its own `users` table in PostgreSQL.
 
 The `users` table contains:
 
 - `id` — internal SplitLedger UUID
-- `firebase_uid` — Firebase Authentication UID
+- `auth.users.id` — Supabase Auth UID
 
 Domain tables such as `groups`, `group_members`, `expenses`,
 and `settlements` reference the internal `users.id`.
 
 The intended identity flow is:
 
-Firebase Authentication
+Supabase Auth
         ↓
-Firebase UID
+Supabase Auth UUID
         ↓
-Firebase JWT
+Supabase Session / JWT
         ↓
 Supabase Third-Party Authentication
         ↓
 PostgreSQL `auth.uid()`
         ↓
-SplitLedger `users.firebase_uid`
+SplitLedger `users.auth.users.id`
         ↓
 SplitLedger `users.id`
 
 Before implementing RLS policies, the relationship between
-Firebase UID and PostgreSQL `auth.uid()` must be verified using
-an actual Firebase-authenticated request.
+Supabase Auth UUID and PostgreSQL `auth.uid()` must be verified using
+an actual Supabase-authenticated request.

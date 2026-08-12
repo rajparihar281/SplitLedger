@@ -7,8 +7,8 @@ The system is designed around a clear separation of responsibilities:
 * **Flutter** handles the user interface, local state, offline data, and interaction with the backend.
 * **Node.js** provides the API, authorization, business logic, settlement engine, synchronization, and real-time events.
 * **PostgreSQL** is the authoritative source of truth for financial and relational data.
-* **Firebase Authentication** handles user authentication.
-* **Firebase Cloud Messaging (FCM)** handles push notifications.
+* **Supabase Auth** handles user authentication.
+* **The notification service** handles push notifications.
 * **Android Java** is used only where native Android capabilities are required.
 
 The architecture is intentionally designed so that the client is never trusted with security-sensitive or authoritative financial decisions.
@@ -79,7 +79,7 @@ The system must allow a user to:
 * View their profile
 * Sign out
 
-Firebase Authentication is responsible for establishing the user's identity.
+Supabase Auth is responsible for establishing the user's identity.
 
 Node.js is responsible for validating the authenticated identity before allowing protected operations.
 
@@ -458,9 +458,9 @@ It does not replace Node.js as the application's authoritative business-logic bo
 
 ---
 
-## 8.5 Firebase Authentication
+## 8.5 Supabase Auth
 
-Firebase Authentication is responsible for:
+Supabase Auth is responsible for:
 
 * User registration
 * Sign-in
@@ -469,15 +469,15 @@ Firebase Authentication is responsible for:
 
 The backend must validate the authenticated identity before processing protected operations.
 
-Firebase Authentication does not determine whether a user can modify a particular group.
+Supabase Auth does not determine whether a user can modify a particular group.
 
 That decision belongs to application authorization rules.
 
 ---
 
-## 8.6 Firebase Cloud Messaging
+## 8.6 Notification Service
 
-Firebase Cloud Messaging (FCM) is responsible for push notification delivery.
+The notification service is responsible for push notification delivery.
 
 Examples:
 
@@ -488,7 +488,7 @@ Node.js event
        ↓
 Notification service
        ↓
-FCM
+Notification Service
        ↓
 User device
 ```
@@ -543,8 +543,8 @@ flowchart TB
         POSTGRES["PostgreSQL"]
     end
 
-    FIREBASE_AUTH["Firebase Authentication"]
-    FCM["Firebase Cloud Messaging"]
+    FIREBASE_AUTH["Supabase Auth"]
+    Notification Service["Notification Service"]
 
     USER --> FLUTTER
     FLUTTER <--> LOCAL
@@ -574,8 +574,8 @@ flowchart TB
     BUSINESS --> WS
     BUSINESS --> NOTIFICATION
 
-    NOTIFICATION --> FCM
-    FCM --> USER
+    NOTIFICATION --> Notification Service
+    Notification Service --> USER
 
     WS --> FLUTTER
 ```
@@ -660,7 +660,7 @@ flowchart TD
 
     CLIENT["Flutter"]
 
-    AUTH["Firebase Authentication"]
+    AUTH["Supabase Auth"]
     TOKEN["Authenticated Identity"]
 
     API["Node.js API"]
@@ -683,7 +683,7 @@ flowchart TD
     ROLE --> OPERATION
 ```
 
-A valid Firebase identity does not automatically grant access to every SplitLedger resource.
+A valid Supabase identity does not automatically grant access to every SplitLedger resource.
 
 For group-specific operations, Node.js must check the user's membership in the requested group.
 
@@ -698,7 +698,7 @@ The system follows this ownership model:
 | UI                          | Flutter                 |
 | Client state                | Flutter                 |
 | Offline cache               | Flutter                 |
-| Authentication              | Firebase Authentication |
+| Authentication              | Supabase Auth |
 | API                         | Node.js                 |
 | Authorization               | Node.js                 |
 | Business logic              | Node.js                 |
@@ -707,7 +707,7 @@ The system follows this ownership model:
 | Persistent financial data   | PostgreSQL              |
 | Database constraints        | PostgreSQL              |
 | Transactions                | PostgreSQL              |
-| Push notification delivery  | FCM                     |
+| Push notification delivery  | Notification Service                     |
 | Native Android capabilities | Android Java            |
 
 ---
@@ -729,7 +729,7 @@ Authoritative ledger
 and:
 
 ```text
-Firebase
+Supabase
      ≠
 Financial ledger
 ```
@@ -1088,7 +1088,7 @@ flowchart LR
     NODE["Node.js"]
     WS["WebSocket Event"]
     CLIENTS["Connected Group Members"]
-    FCM["Firebase Cloud Messaging"]
+    Notification Service["Notification Service"]
     DEVICES["User Devices"]
 
     ACTION --> DB
@@ -1097,8 +1097,8 @@ flowchart LR
     NODE --> WS
     WS --> CLIENTS
 
-    NODE --> FCM
-    FCM --> DEVICES
+    NODE --> Notification Service
+    Notification Service --> DEVICES
 ```
 
 Real-time events improve responsiveness, but they are not the source of truth.
@@ -1374,7 +1374,7 @@ flowchart TB
     end
 
     subgraph IDENTITY["Identity"]
-        FIREBASE_AUTH["Firebase Authentication"]
+        FIREBASE_AUTH["Supabase Auth"]
     end
 
     subgraph SERVER["Application Server"]
@@ -1396,7 +1396,7 @@ flowchart TB
         POSTGRES["PostgreSQL"]
     end
 
-    FCM["Firebase Cloud Messaging"]
+    Notification Service["Notification Service"]
 
     USER --> FLUTTER
 
@@ -1429,8 +1429,8 @@ flowchart TB
     DOMAIN --> NOTIFICATIONS
 
     REALTIME --> FLUTTER
-    NOTIFICATIONS --> FCM
-    FCM --> USER
+    NOTIFICATIONS --> Notification Service
+    Notification Service --> USER
 ```
 
 ---
@@ -1472,7 +1472,7 @@ The complete conceptual flow is:
                      ┌──────────┴──────────┐
                      │                     │
                      ▼                     ▼
-               WebSocket                FCM
+               WebSocket                Notification Service
                      │                     │
                      ▼                     ▼
                  Flutter                Devices

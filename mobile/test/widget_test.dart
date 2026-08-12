@@ -1,30 +1,45 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/auth/data/auth_repository.dart';
+import 'package:mobile/features/auth/presentation/auth_controller.dart';
+import 'package:mobile/features/auth/presentation/signup_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:mobile/main.dart';
+class FakeAuthRepository implements AuthRepository {
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<User?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<User?> signUp({
+    required String email,
+    required String password,
+  }) async {
+    return null;
+  }
+
+  @override
+  User? get currentUser => null;
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Signup screen renders correctly', (WidgetTester tester) async {
+    final authRepository = FakeAuthRepository();
+    final authController = AuthController(authRepository);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      MaterialApp(home: SignupScreen(authController: authController)),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Create account'), findsNWidgets(2));
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
   });
 }

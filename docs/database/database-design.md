@@ -85,7 +85,7 @@ The database design follows these principles:
 users
 -----
 id
-firebase_uid
+auth.users.id
 name
 email
 avatar_url
@@ -95,31 +95,31 @@ updated_at
 
 ### Authentication Ownership
 
-Firebase Authentication owns the authentication identity.
+Supabase Auth owns the authentication identity.
 
 The PostgreSQL `users` table represents the application's user profile and domain identity.
 
 The relationship is:
 
 ```text
-Firebase Authentication
+Supabase Auth
         │
-        │ Firebase UID
+        │ Supabase Auth UUID
         ▼
 PostgreSQL users
 ```
 
-The `firebase_uid` column associates the application user with their Firebase Authentication identity.
+The `auth.users.id` column associates the application user with their Supabase Auth identity.
 
 ### Design Decision
 
 The application database does not store a password.
 
-Authentication credentials are managed by Firebase Authentication.
+Authentication credentials are managed by Supabase Auth.
 
-The application database stores the Firebase identity required to associate authenticated users with application-level data.
+The application database stores the Supabase identity required to associate authenticated users with application-level data.
 
-The Firebase UID should be unique because one Firebase identity must map to only one application user.
+The Supabase Auth UUID should be unique because one Supabase identity must map to only one application user.
 
 ---
 
@@ -665,7 +665,7 @@ Initial index candidates include:
 
 | Table            | Column(s)      | Reason                                       |
 | ---------------- | -------------- | -------------------------------------------- |
-| `users`          | `firebase_uid` | Find application user from Firebase identity |
+| `users`          | `auth.users.id` | Find application user from Supabase identity |
 | `users`          | `email`        | User lookup and uniqueness                   |
 | `groups`         | `created_by`   | Find groups created by a user                |
 | `group_members`  | `user_id`      | Find groups belonging to a user              |
@@ -714,7 +714,7 @@ erDiagram
 
     USERS {
         uuid id PK
-        string firebase_uid UK
+        string auth.users.id UK
         string name
         string email UK
         string avatar_url
@@ -775,7 +775,7 @@ The resulting conceptual model is:
 │        USERS        │
 ├─────────────────────┤
 │ id                  │
-│ firebase_uid        │
+│ auth.users.id        │
 │ name                │
 │ email               │
 │ avatar_url          │
@@ -846,7 +846,7 @@ The initial database design should enforce the following constraints.
 
 ## Users
 
-* `firebase_uid` must be unique.
+* `auth.users.id` must be unique.
 * `email` should be unique where required by the application.
 * Required identity fields should be `NOT NULL`.
 
@@ -897,8 +897,8 @@ The backend must additionally verify that both users belong to the group and tha
 The current database design establishes the following decisions:
 
 1. **PostgreSQL is the authoritative source of truth for financial data.**
-2. **Firebase Authentication owns authentication credentials.**
-3. **`users.firebase_uid`**** connects Firebase identities to application users.**
+2. **Supabase Auth owns authentication credentials.**
+3. **`users.auth.users.id`**** connects Supabase identities to application users.**
 4. **Users and groups use ****`group_members`**** to represent their many-to-many relationship.**
 5. **Duplicate group memberships are prevented with a composite uniqueness constraint.**
 6. **Expenses and their splits are stored separately.**

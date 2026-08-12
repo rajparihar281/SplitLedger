@@ -400,12 +400,12 @@ These test cases will be used to validate the RLS policies after implementation.
 
 ## Authentication Identity Tests
 
-### Test AUTH-001 — Firebase identity resolution
+### Test AUTH-001 — Supabase identity resolution
 
-Given an authenticated Firebase user:
+Given an authenticated Supabase user:
 
-- Firebase UID must be available in the Firebase JWT.
-- Supabase must accept the Firebase JWT.
+- Supabase Auth UUID must be available in the Supabase Session / JWT.
+- Supabase must accept the Supabase Session / JWT.
 - The request must be treated as an authenticated request.
 - PostgreSQL `auth.uid()` must resolve to the expected identity.
 
@@ -415,9 +415,9 @@ PASS
 
 ---
 
-### Test AUTH-002 — Unknown Firebase user
+### Test AUTH-002 — Unknown Supabase user
 
-Given a Firebase user who does not have a corresponding
+Given a Supabase user who does not have a corresponding
 SplitLedger `users` record:
 
 The user must not be treated as a valid SplitLedger application
