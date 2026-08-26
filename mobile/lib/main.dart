@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
-import 'features/auth/presentation/signup_screen.dart';
+import 'features/auth/presentation/auth_state_wrapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,10 +35,13 @@ class SplitLedgerApp extends StatelessWidget {
       title: 'SplitLedger',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
       ),
-      home: SignupScreen(authController: authController),
+      home: AuthStateWrapper(authController: authController),
     );
   }
 }

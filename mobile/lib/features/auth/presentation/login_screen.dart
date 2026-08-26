@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'auth_controller.dart';
-import 'login_screen.dart';
+import 'signup_screen.dart';
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key, required this.authController});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key, required this.authController});
 
   final AuthController authController;
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
@@ -26,11 +25,10 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-
     super.dispose();
   }
 
-  Future<void> _signUp() async {
+  Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -41,39 +39,25 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final user = await widget.authController.signUp(
+      final user = await widget.authController.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (user == null) {
         setState(() {
-          _errorMessage = 'Account creation failed.';
+          _errorMessage = 'Login failed.';
         });
-
-        return;
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created successfully.')),
-      );
     } on AuthException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Something went wrong. Please try again.';
       });
@@ -89,7 +73,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(title: const Text('Sign In')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -109,11 +93,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Enter your email';
                     }
-
                     if (!value.contains('@')) {
                       return 'Enter a valid email';
                     }
-
                     return null;
                   },
                 ),
@@ -129,11 +111,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Enter your password';
                     }
-
-                    if (value.length < 6) {
-                      return 'Password must contain at least 6 characters';
-                    }
-
                     return null;
                   },
                 ),
@@ -151,14 +128,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _signUp,
+                    onPressed: _isLoading ? null : _signIn,
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(),
                           )
-                        : const Text('Create account'),
+                        : const Text('Sign In'),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -166,11 +143,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   onPressed: () {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (_) => LoginScreen(authController: widget.authController),
+                        builder: (_) => SignupScreen(authController: widget.authController),
                       ),
                     );
                   },
-                  child: const Text('Already have an account? Sign In'),
+                  child: const Text('Create an account'),
                 ),
               ],
             ),
