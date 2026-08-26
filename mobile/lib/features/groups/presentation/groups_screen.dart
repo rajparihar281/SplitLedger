@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/presentation/auth_controller.dart';
+import '../../profile/presentation/profile_screen.dart';
 import 'create_group_screen.dart';
 import 'group_detail_screen.dart';
 
@@ -41,7 +42,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              // Navigate to profile
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
             },
           ),
           IconButton(
