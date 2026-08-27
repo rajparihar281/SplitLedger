@@ -7,8 +7,8 @@ class AuthController {
 
   final AuthRepository _repository;
 
-  Future<User?> signUp({required String email, required String password}) {
-    return _repository.signUp(email: email, password: password);
+  Future<User?> signUp({required String email, required String password, String? fullName}) {
+    return _repository.signUp(email: email, password: password, fullName: fullName);
   }
 
   Future<User?> signIn({required String email, required String password}) {

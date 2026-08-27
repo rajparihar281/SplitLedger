@@ -11,10 +11,12 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<User?> signUp({
     required String email,
     required String password,
+    String? fullName,
   }) async {
     final response = await _supabase.auth.signUp(
       email: email,
       password: password,
+      data: fullName != null ? {'full_name': fullName} : null,
     );
 
     return response.user;
