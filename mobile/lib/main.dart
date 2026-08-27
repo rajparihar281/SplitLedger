@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/supabase_config.dart';
+import 'core/theme/app_theme.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/auth_state_wrapper.dart';
@@ -34,13 +35,7 @@ class SplitLedgerApp extends StatelessWidget {
     return MaterialApp(
       title: 'SplitLedger',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: AuthStateWrapper(authController: authController),
     );
   }

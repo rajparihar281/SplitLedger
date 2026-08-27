@@ -21,6 +21,7 @@ class FakeAuthRepository implements AuthRepository {
   Future<User?> signUp({
     required String email,
     required String password,
+    String? fullName,
   }) async {
     return null;
   }
