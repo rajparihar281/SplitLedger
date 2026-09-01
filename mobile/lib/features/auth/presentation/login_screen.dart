@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import 'auth_controller.dart';
 import 'signup_screen.dart';
 
@@ -57,34 +60,34 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.xxxl,
+          ),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-                // Logo & Header
+                const SizedBox(height: AppSpacing.xxxl),
+
+                // Logo
                 Center(
                   child: Hero(
                     tag: 'app_logo',
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 88,
+                      height: 88,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          )
-                        ],
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 2,
+                        ),
                         image: const DecorationImage(
                           image: AssetImage('assets/logo/logo.jpg'),
                           fit: BoxFit.cover,
@@ -93,29 +96,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+
+                const SizedBox(height: AppSpacing.sectionGap),
+
+                // Heading
                 Text(
-                  'Welcome Back',
+                  'Welcome back',
                   style: theme.textTheme.displayMedium?.copyWith(
-                    fontSize: 32,
+                    fontSize: 28,
                     letterSpacing: -0.5,
+                    color: AppColors.ink,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.titleSubtitleGap),
                 Text(
                   'Sign in to continue to SplitLedger',
                   style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 48),
 
-                // Form Fields
+                const SizedBox(height: AppSpacing.xxxl),
+
+                // Email field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: 'Email Address',
+                    labelText: 'Email address',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   validator: (value) {
@@ -124,7 +132,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.base),
+
+                // Password field
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -133,8 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
                       ),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
@@ -144,51 +155,67 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
-                
-                // Error Message
+
+                const SizedBox(height: AppSpacing.xl),
+
+                // Error message
                 if (_errorMessage != null)
                   Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.small),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline_rounded, color: theme.colorScheme.error),
-                        const SizedBox(width: 12),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.w500),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                // Sign In Button
+                // Sign in button
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signIn,
                   child: _isLoading
                       ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: AppColors.white,
+                            strokeWidth: 2.5,
+                          ),
                         )
-                      : const Text('Sign In'),
+                      : const Text('Sign in'),
                 ),
-                
-                const SizedBox(height: 32),
-                
-                // Sign Up Link
+
+                const SizedBox(height: AppSpacing.sectionGap),
+
+                // Sign up link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Don\'t have an account? ', style: theme.textTheme.bodyMedium),
+                    Text(
+                      'Don\'t have an account? ',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
@@ -197,11 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.primary,
-                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      child: const Text('Sign Up'),
+                      child: const Text('Sign up'),
                     ),
                   ],
                 ),

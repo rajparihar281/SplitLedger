@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -19,47 +22,50 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Subtle circular icon container
             Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: const BoxDecoration(
+                color: AppColors.mist,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                size: 64,
-                color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                size: 48,
+                color: AppColors.slate,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.titleSubtitleGap),
             Text(
               subtitle,
               style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.slate,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             if (action != null && actionLabel != null) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.sectionGap),
               ElevatedButton.icon(
                 onPressed: action,
-                icon: const Icon(Icons.add_rounded),
+                icon: const Icon(Icons.add_rounded, size: 20),
                 label: Text(actionLabel!),
               ),
             ],
