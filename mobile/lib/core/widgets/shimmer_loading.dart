@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class ShimmerLoading extends StatefulWidget {
   final double width;
   final double height;
@@ -55,9 +57,9 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
               end: Alignment.bottomRight,
               stops: const [0.0, 0.5, 1.0],
               colors: [
-                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                AppColors.mist.withValues(alpha: 0.6),
+                AppColors.border.withValues(alpha: 0.4),
+                AppColors.mist.withValues(alpha: 0.6),
               ],
               transform: GradientRotation(_animation.value),
             ),
