@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+
 class GroupCard extends StatefulWidget {
   const GroupCard({
     super.key,
@@ -25,7 +28,7 @@ class _GroupCardState extends State<GroupCard> with SingleTickerProviderStateMix
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -39,7 +42,9 @@ class _GroupCardState extends State<GroupCard> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initials = widget.groupName.isNotEmpty ? widget.groupName[0].toUpperCase() : '?';
+    final initials = widget.groupName.isNotEmpty
+        ? widget.groupName[0].toUpperCase()
+        : '?';
 
     return GestureDetector(
       onTapDown: (_) => _controller.forward(),
@@ -51,82 +56,69 @@ class _GroupCardState extends State<GroupCard> with SingleTickerProviderStateMix
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.screenH,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary.withValues(alpha: 0.05),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
-              color: theme.dividerColor.withValues(alpha: 0.5),
+              color: AppColors.border,
+              width: 1,
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.cardPadding),
             child: Row(
               children: [
+                // Muted initial avatar — no gradient, no glow
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        theme.colorScheme.primary,
-                        theme.colorScheme.secondary,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: AppColors.mist,
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
                   ),
                   child: Center(
                     child: Text(
                       initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 24,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+
+                const SizedBox(width: AppSpacing.base),
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.groupName,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 18,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Tap to view balances',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 13,
+                        'Tap to view details',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.slate,
                         ),
                       ),
                     ],
                   ),
                 ),
+
                 Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppColors.slate.withValues(alpha: 0.6),
                 ),
               ],
             ),

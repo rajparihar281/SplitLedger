@@ -1,26 +1,50 @@
 import 'package:flutter/material.dart';
 
+/// SplitLedger — Warm Finance / Modern Personal Ledger palette.
+///
+/// Ink  → structure
+/// Coral → action
+/// Sage  → completed / positive
+/// Amber → pending / attention
+/// Error → destructive
+/// Slate → supporting information
+/// Paper → environment
+/// White → content surfaces
+/// Mist  → inputs / secondary surfaces
+/// Border → separation
 class AppColors {
-  // Primary Brand Colors
-  static const Color primary = Color(0xFF6366F1); // Indigo
-  static const Color secondary = Color(0xFF4F46E5); // Deep Indigo
-  static const Color accent = Color(0xFF10B981); // Emerald Green for positive amounts
+  AppColors._();
 
-  // Backgrounds
-  static const Color background = Color(0xFFF8FAFC); // Slate 50
-  static const Color surface = Colors.white;
-  static const Color cardColor = Colors.white;
+  // ── Foundation ──────────────────────────────────────────────
+  /// Primary text, headings, important amounts, primary buttons.
+  static const ink = Color(0xFF252A34);
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
-  static const Color textSecondary = Color(0xFF64748B); // Slate 500
-  static const Color textMuted = Color(0xFF94A3B8); // Slate 400
+  /// Warm off-white scaffold / background.
+  static const paper = Color(0xFFFAF8F5);
 
-  // System Colors
-  static const Color error = Color(0xFFEF4444); // Red 500
-  static const Color success = Color(0xFF10B981); // Emerald 500
-  static const Color warning = Color(0xFFF59E0B); // Amber 500
+  /// Card and elevated-surface background.
+  static const white = Color(0xFFFFFFFF);
 
-  // Borders & Dividers
-  static const Color border = Color(0xFFE2E8F0); // Slate 200
+  /// Inputs, secondary surfaces.
+  static const mist = Color(0xFFF0EFEC);
+
+  /// Secondary text, metadata, inactive icons, helper text.
+  static const slate = Color(0xFF777B83);
+
+  /// Subtle borders, dividers, card outlines.
+  static const border = Color(0xFFE3E0DA);
+
+  // ── Brand Accent ────────────────────────────────────────────
+  /// Primary accent — used sparingly for actions, FABs, selected state.
+  static const coral = Color(0xFFE9826E);
+
+  // ── Semantic Colors ─────────────────────────────────────────
+  /// Settled, paid, completed, positive states.
+  static const sage = Color(0xFF789C86);
+
+  /// Pending, reminder, needs-attention states.
+  static const amber = Color(0xFFD9A441);
+
+  /// Failed, destructive, overdue states.
+  static const error = Color(0xFFC96B67);
 }

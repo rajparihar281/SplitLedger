@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../groups/presentation/groups_screen.dart';
 import 'auth_controller.dart';
 import 'login_screen.dart';
@@ -22,10 +23,13 @@ class _AuthStateWrapperState extends State<AuthStateWrapper> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            backgroundColor: AppColors.paper,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.coral),
+            ),
           );
         }
-        
+
         final session = snapshot.data?.session;
         if (session != null) {
           return GroupsScreen(authController: widget.authController);

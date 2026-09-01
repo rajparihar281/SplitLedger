@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -50,44 +52,54 @@ class _GroupsScreenState extends State<GroupsScreen> {
     final username = userEmail.split('@').first;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // Sticky Premium App Bar
+          // ── App Bar ────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 130,
             floating: true,
             pinned: true,
-            backgroundColor: theme.scaffoldBackgroundColor,
+            backgroundColor: AppColors.paper,
             elevation: 0,
+            scrolledUnderElevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              titlePadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.screenH,
+                vertical: AppSpacing.base,
+              ),
               title: Text(
                 'SplitLedger',
-                style: theme.textTheme.displayMedium?.copyWith(
-                  fontSize: 24,
-                  letterSpacing: -0.5,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 22,
+                  letterSpacing: -0.3,
+                  color: AppColors.ink,
                 ),
               ),
               background: Container(
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                alignment: Alignment.topRight,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH,
+                  56,
+                  AppSpacing.screenH,
+                  0,
+                ),
+                alignment: Alignment.topLeft,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Good morning,',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        Text(
-                          username.toUpperCase(),
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ],
+                    Text(
+                      'Good morning,',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.slate,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      username,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -95,7 +107,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.person_outline_rounded),
+                icon: const Icon(Icons.person_outline_rounded, size: 22),
+                color: AppColors.ink,
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -103,34 +116,60 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.logout_rounded),
+                icon: const Icon(Icons.logout_rounded, size: 22),
+                color: AppColors.slate,
                 onPressed: () async {
                   await widget.authController.signOut();
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
             ],
           ),
 
-          // Dashboard Content
+          // ── Section header ─────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH,
+                AppSpacing.lg,
+                AppSpacing.screenH,
+                AppSpacing.md,
+              ),
+              child: Text(
+                'Your groups',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: AppColors.slate,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+
+          // ── Content ────────────────────────────────────────
           SliverToBoxAdapter(
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _groupsFuture,
               builder: (context, snapshot) {
+                // Loading shimmer
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
                     itemCount: 4,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (_, _) => const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: ShimmerLoading(width: double.infinity, height: 90, borderRadius: 20),
+                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (_, _) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      child: ShimmerLoading(
+                        width: double.infinity,
+                        height: 80,
+                        borderRadius: AppRadius.card,
+                      ),
                     ),
                   );
                 }
 
+                // Error state
                 if (snapshot.hasError) {
                   return EmptyState(
                     icon: Icons.error_outline_rounded,
@@ -139,13 +178,15 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   );
                 }
 
+                // Empty state
                 final groups = snapshot.data ?? [];
                 if (groups.isEmpty) {
                   return EmptyState(
                     icon: Icons.group_add_outlined,
                     title: 'No groups yet',
-                    subtitle: 'Create your first group to start splitting expenses with friends!',
-                    actionLabel: 'Create Group',
+                    subtitle:
+                        'Create your first group to start splitting expenses with friends.',
+                    actionLabel: 'Create group',
                     action: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
@@ -155,10 +196,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   );
                 }
 
+                // Group list
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(top: 8, bottom: 100),
+                  padding: const EdgeInsets.only(bottom: 100),
                   itemCount: groups.length,
                   itemBuilder: (context, index) {
                     final group = groups[index];
@@ -182,6 +224,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
           ),
         ],
       ),
+
+      // ── FAB – coral accent ─────────────────────────────────
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.of(context).push(
@@ -189,11 +233,17 @@ class _GroupsScreenState extends State<GroupsScreen> {
           );
           _refresh();
         },
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Group', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.coral,
+        foregroundColor: AppColors.white,
+        elevation: 2,
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(
+          'New group',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: AppColors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
