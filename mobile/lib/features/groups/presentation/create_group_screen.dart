@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
 
@@ -55,31 +58,52 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Group')),
+      appBar: AppBar(title: const Text('Create group')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Section label
+              Text(
+                'Group name',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: AppColors.slate,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Input uses theme defaults (mist fill, no border, coral focus)
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: 'Group Name',
-                  border: OutlineInputBorder(),
+                  hintText: 'e.g. Weekend trip',
                 ),
                 validator: (val) =>
                     val == null || val.trim().isEmpty ? 'Enter a name' : null,
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: AppSpacing.sectionGap),
+
+              // Create button
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: ElevatedButton(
                   onPressed: _isLoading ? null : _createGroup,
                   child: _isLoading
-                      ? const CircularProgressIndicator()
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: AppColors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                       : const Text('Create'),
                 ),
               ),
